@@ -42,29 +42,57 @@ class GameState:
 
 current_state = GameState.MENU
 
-# Funções para gerenciar scores
+# Funções para gerenciar scores CORRIGIDAS
 def load_scores():
-    if os.path.exists(SCORE_FILE):
-        try:
+    """Carrega os scores do arquivo JSON"""
+    try:
+        if os.path.exists(SCORE_FILE):
             with open(SCORE_FILE, 'r') as f:
-                return json.load(f)
-        except:
-            return {"player_wins": 0, "ai_wins": 0, "draws": 0}
-    return {"player_wins": 0, "ai_wins": 0, "draws": 0}
+                scores = json.load(f)
+                # Garantir que todas as chaves existem
+                if "player_wins" not in scores:
+                    scores["player_wins"] = 0
+                if "ai_wins" not in scores:
+                    scores["ai_wins"] = 0
+                if "draws" not in scores:
+                    scores["draws"] = 0
+                return scores
+        else:
+            # Criar arquivo com scores zerados se não existir
+            default_scores = {"player_wins": 0, "ai_wins": 0, "draws": 0}
+            save_scores(default_scores)
+            return default_scores
+    except Exception as e:
+        print(f"Erro ao carregar scores: {e}")
+        return {"player_wins": 0, "ai_wins": 0, "draws": 0}
 
 def save_scores(scores):
-    with open(SCORE_FILE, 'w') as f:
-        json.dump(scores, f)
+    """Salva os scores no arquivo JSON"""
+    try:
+        with open(SCORE_FILE, 'w') as f:
+            json.dump(scores, f, indent=4)
+        print(f"Scores salvos: {scores}")  # Debug
+    except Exception as e:
+        print(f"Erro ao salvar scores: {e}")
 
 def update_score(result):
+    """Atualiza os scores baseado no resultado"""
     scores = load_scores()
+    print(f"Score anterior: {scores}")  # Debug
+    
     if result == "player":
         scores["player_wins"] += 1
     elif result == "ai":
         scores["ai_wins"] += 1
     elif result == "draw":
         scores["draws"] += 1
+    
+    print(f"Score atualizado: {scores}")  # Debug
     save_scores(scores)
+    
+    # Verificar se salvou corretamente
+    verify_scores = load_scores()
+    print(f"Score verificado: {verify_scores}")  # Debug
 
 # Classe para o Ultimate Tic-Tac-Toe
 class UltimateTicTacToe:
@@ -80,6 +108,7 @@ class UltimateTicTacToe:
         self.next_board = None  # None significa que pode jogar em qualquer tabuleiro
         self.game_over = False
         self.winner = None
+        self.score_saved = False  # Nova flag para evitar salvar múltiplas vezes
     
     def get_valid_moves(self):
         moves = []
@@ -214,7 +243,7 @@ class UltimateTicTacToe:
             self.game_over = True
             self.winner = None
 
-# IA CORRIGIDA para Ultimate Tic-Tac-Toe
+# IA para Ultimate Tic-Tac-Toe (mantida igual pois está funcionando)
 class UltimateAI:
     def __init__(self, symbol):
         self.symbol = symbol
@@ -620,9 +649,11 @@ def make_ai_move():
         if move:
             game.make_move(*move)
 
-# Loop principal do jogo
+# Loop principal do jogo CORRIGIDO
 running = True
 ai_thinking = False
+score_update_pending = False
+score_result = None
 
 while running:
     mouse_pos = pygame.mouse.get_pos()
@@ -639,6 +670,7 @@ while running:
                     current_state = GameState.JOGO
                     game.reset_game()
                     ai_thinking = False
+                    score_update_pending = False
                 
                 # Botão Scores
                 elif WIDTH//2 - 100 <= mouse_pos[0] <= WIDTH//2 + 100 and 270 <= mouse_pos[1] <= 320:
@@ -653,11 +685,13 @@ while running:
                 # Botão Voltar
                 if 50 <= mouse_pos[0] <= 150 and 50 <= mouse_pos[1] <= 90:
                     current_state = GameState.MENU
+                    score_update_pending = False
                 
                 # Botão Reiniciar
                 elif WIDTH - 150 <= mouse_pos[0] <= WIDTH - 50 and 50 <= mouse_pos[1] <= 90:
                     game.reset_game()
                     ai_thinking = False
+                    score_update_pending = False
                 
                 # Clicar no tabuleiro (só se for vez do jogador)
                 elif not game.game_over and game.current_player == player_symbol:
@@ -708,17 +742,25 @@ while running:
     if current_state == GameState.JOGO and not game.game_over and game.current_player == ai_symbol and not ai_thinking:
         ai_thinking = True
     
-    # Verificar se o jogo terminou e salvar o score
-    if current_state == GameState.JOGO and game.game_over and not ai_thinking:
-        pygame.time.delay(1000)  # Pequeno delay antes de salvar
+    # LÓGICA DE SCORE CORRIGIDA - Salvar score apenas uma vez quando o jogo terminar
+    if current_state == GameState.JOGO and game.game_over and not game.score_saved:
+        # Determinar resultado
         if game.winner == player_symbol:
-            update_score("player")
+            score_result = "player"
         elif game.winner == ai_symbol:
-            update_score("ai")
+            score_result = "ai"
         else:
-            update_score("draw")
-        # Resetar flag para evitar salvar múltiplas vezes
-        game.game_over = False
+            score_result = "draw"
+        
+        # Marcar que vamos atualizar o score
+        score_update_pending = True
+        game.score_saved = True  # Importante: marcar que já salvamos para esta partida
+    
+    # Atualizar score com um pequeno delay para o jogador ver o resultado
+    if score_update_pending:
+        pygame.time.delay(1000)  # Esperar 1 segundo antes de salvar
+        update_score(score_result)
+        score_update_pending = False
     
     # Desenhar a tela baseada no estado atual
     if current_state == GameState.MENU:
