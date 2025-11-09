@@ -5,7 +5,7 @@ import os
 import random
 import math
 
-# Inicialização do Pygame
+# Código feito por Lucas, Uili e Welton
 pygame.init()
 
 # Configurações da tela
