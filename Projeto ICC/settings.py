@@ -30,8 +30,14 @@ WINNER_O_BG = (0, 200, 255, 80)      # Azul transparente (para vitória local)
 font_large = pygame.font.SysFont('Verdana', 48, bold=True)
 font_medium = pygame.font.SysFont('Verdana', 30)
 font_small = pygame.font.SysFont('Verdana', 20)
+font_tiny = pygame.font.SysFont('Verdana', 14)
 font_symbol = pygame.font.SysFont('Arial', 40, bold=True) # Fonte específica para X e O
 font_winner = pygame.font.SysFont('Arial', 80, bold=True)
+
+# ARQUIVOS DE DADOS
+FILE_PLAYERS = "players.json"
+FILE_MATCHES = "matches.json"
+FILE_MOVES = "moves.json"
 
 # Estado do jogo
 class GameState:
@@ -39,3 +45,5 @@ class GameState:
     JOGO = 1
     SCORES = 2
     INSTRUCOES = 3  # <--- NOVO
+    NOME = 4
+    SENHA = 5
