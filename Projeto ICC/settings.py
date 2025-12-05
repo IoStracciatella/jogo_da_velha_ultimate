@@ -1,49 +1,51 @@
 import pygame
+import os
 
-# Inicializa fontes
+# Inicializa fontes do pygame para evitar erros de init
 pygame.font.init()
 
-# Configurações da tela
-WIDTH, HEIGHT = 900, 700
-CAPTION = "JOGO DA VELHA"
+# --- DIMENSÕES E TÍTULO ---
+LARGURA_TELA = 900
+ALTURA_TELA = 700
+TITULO_JANELA = "JOGO DA VELHA ULTIMATE"
 
 # --- PALETA DE CORES (DARK NEON) ---
 # Fundo e Elementos Base
-BACKGROUND_COLOR = (20, 23, 30)      # Azul muito escuro (quase preto)
-GRID_COLOR_GLOBAL = (255, 255, 255)  # Branco para as linhas grossas principais
-GRID_COLOR_SMALL = (60, 70, 85)      # Cinza azulado para as linhas finas
-ACTIVE_BOARD_BG = (40, 45, 60)       # Fundo levemente mais claro para o tabuleiro ativo
+COR_FUNDO = (20, 23, 30)           # Azul muito escuro (quase preto)
+COR_GRADE_GLOBAL = (255, 255, 255) # Branco para as linhas grossas principais
+COR_GRADE_PEQUENA = (60, 70, 85)   # Cinza azulado para as linhas finas
+COR_TABULEIRO_ATIVO = (40, 45, 60) # Fundo destaque para onde o jogador deve jogar
 
 # Botões e Interface
-BUTTON_COLOR = (50, 168, 82)         # Verde suave
-BUTTON_HOVER_COLOR = (60, 188, 92)
-TEXT_COLOR = (235, 235, 235)         # Branco gelo (menos agressivo que branco puro)
+COR_BOTAO = (50, 168, 82)          # Verde suave
+COR_BOTAO_HOVER = (60, 188, 92)    # Verde mais claro (ao passar mouse)
+COR_TEXTO = (235, 235, 235)        # Branco gelo
 
 # Jogadores (Cores Neon)
-PLAYER_X_COLOR = (255, 80, 80)       # Vermelho Neon
-PLAYER_O_COLOR = (0, 200, 255)       # Ciano Neon
-WINNER_X_BG = (255, 80, 80, 80)      # Vermelho transparente (para vitória local)
-WINNER_O_BG = (0, 200, 255, 80)      # Azul transparente (para vitória local)
+COR_JOGADOR_X = (255, 80, 80)      # Vermelho Neon
+COR_JOGADOR_O = (0, 200, 255)      # Ciano Neon
+COR_VITORIA_X = (255, 80, 80, 80)  # Vermelho transparente (fundo de vitória local)
+COR_VITORIA_O = (0, 200, 255, 80)  # Azul transparente
 
-# Fontes Modernas (Tenta pegar Arial Rounded ou Verdana, senão usa padrão)
-# Usaremos 'bold' para deixar os símbolos mais "gordinhos"
-font_large = pygame.font.SysFont('Verdana', 48, bold=True)
-font_medium = pygame.font.SysFont('Verdana', 30)
-font_small = pygame.font.SysFont('Verdana', 20)
-font_tiny = pygame.font.SysFont('Verdana', 14)
-font_symbol = pygame.font.SysFont('Arial', 40, bold=True) # Fonte específica para X e O
-font_winner = pygame.font.SysFont('Arial', 80, bold=True)
+# --- FONTES ---
+# Usamos nomes descritivos para facilitar o uso na UI
+fonte_titulo = pygame.font.SysFont('Verdana', 48, bold=True)
+fonte_media = pygame.font.SysFont('Verdana', 30)
+fonte_pequena = pygame.font.SysFont('Verdana', 20)
+fonte_minuscula = pygame.font.SysFont('Verdana', 14)
+fonte_simbolo = pygame.font.SysFont('Arial', 40, bold=True) # Para desenhar X e O
+fonte_vencedor = pygame.font.SysFont('Arial', 80, bold=True) # Para o X/O gigante
 
-# ARQUIVOS DE DADOS
-FILE_PLAYERS = "players.json"
-FILE_MATCHES = "matches.json"
-FILE_MOVES = "moves.json"
+# --- ARQUIVOS DE DADOS ---
+ARQUIVO_JOGADORES = "jogadores.json"
+ARQUIVO_PARTIDAS = "partidas.json"
+ARQUIVO_MOVIMENTOS = "movimentos.json"
 
-# Estado do jogo
-class GameState:
+# --- ESTADOS DO JOGO ---
+class EstadoJogo:
     MENU = 0
-    JOGO = 1
-    SCORES = 2
-    INSTRUCOES = 3  # <--- NOVO
+    JOGANDO = 1
+    RANKING = 2     # Antigo SCORES
+    INSTRUCOES = 3
     NOME = 4
     SENHA = 5

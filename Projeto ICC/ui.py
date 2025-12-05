@@ -1,53 +1,55 @@
 import pygame
 from settings import *
-from scores import load_json, get_ranking, get_general_stats, check_user_exists
+from scores import ler_arquivo, gerar_ranking, realizar_login, verificar_usuario, obter_estatisticas_gerais
 
-# OBS: este arquivo assume que settings.py define:
-# WIDTH, HEIGHT, font_large, font_medium, font_small, font_tiny, font_symbol, font_winner,
-# BUTTON_COLOR, BUTTON_HOVER_COLOR, TEXT_COLOR, BACKGROUND_COLOR, ACTIVE_BOARD_BG,
-# PLAYER_X_COLOR, PLAYER_O_COLOR, WINNER_X_BG, WINNER_O_BG, GRID_COLOR_SMALL, GRID_COLOR_GLOBAL
+# --- FERRAMENTAS AUXILIARES DE DESENHO ---
 
-# --- FERRAMENTAS AUXILIARES (Simplificam a vida) ---
+def desenhar_texto_centralizado(tela, texto, fonte, cor, centro_x, centro_y):
+    """Escreve texto centralizado na posição X, Y."""
+    superficie_texto = fonte.render(texto, True, cor)
+    retangulo = superficie_texto.get_rect(center=(centro_x, centro_y))
+    tela.blit(superficie_texto, retangulo)
+    return retangulo
 
-def desenhar_texto_centralizado(screen, text, font, color, center_x, center_y):
-    """Escreve texto centralizado e retorna o rect do texto."""
-    surf = font.render(text, True, color)
-    rect = surf.get_rect(center=(center_x, center_y))
-    screen.blit(surf, rect)
-    return rect
+def desenhar_botao(tela, texto, x, y, largura, altura, posicao_mouse):
+    """Desenha um botão e retorna seu retângulo para detecção de clique."""
+    retangulo = pygame.Rect(x, y, largura, altura)
+    
+    # Efeito de 'Hover' (mudar cor quando o mouse passa por cima)
+    cor_atual = COR_BOTAO_HOVER if retangulo.collidepoint(posicao_mouse) else COR_BOTAO
+    
+    pygame.draw.rect(tela, cor_atual, retangulo, border_radius=10)
+    desenhar_texto_centralizado(tela, texto, fonte_media, COR_TEXTO, retangulo.centerx, retangulo.centery)
+    
+    return retangulo
 
-def draw_button(screen, text, x, y, w, h, mouse_pos):
-    """Desenha um botão e retorna seu pygame.Rect (útil para lógica de clique)."""
-    rect = pygame.Rect(x, y, w, h)
-    color = BUTTON_HOVER_COLOR if rect.collidepoint(mouse_pos) else BUTTON_COLOR
-    pygame.draw.rect(screen, color, rect, border_radius=10)
-    desenhar_texto_centralizado(screen, text, font_medium, TEXT_COLOR, rect.centerx, rect.centery)
-    return rect
+# --- TELAS DO JOGO ---
 
-# --- TELAS ---
-# Cada função de desenho retorna um dicionário com os botões desenhados na tela:
-# ex: {"VOLtar": rect_voltar, "REINICIAR": rect_reiniciar}
-# se não houver botões, retorna {}.
+def desenhar_menu(tela, posicao_mouse):
+    """Tela Principal (Menu)."""
+    tela.fill(COR_FUNDO)
+    
+    # Título com efeito de sombra
+    desenhar_texto_centralizado(tela, TITULO_JANELA, fonte_titulo, (0,0,0), LARGURA_TELA//2 + 3, 80 + 3)
+    desenhar_texto_centralizado(tela, TITULO_JANELA, fonte_titulo, COR_TEXTO, LARGURA_TELA//2, 80)
 
-def draw_menu(screen, mouse_pos):
-    screen.fill(BACKGROUND_COLOR)
-    desenhar_texto_centralizado(screen, "JOGO DA VELHA", font_large, (0,0,0), WIDTH//2 + 3, 80 + 3)
-    desenhar_texto_centralizado(screen, "JOGO DA VELHA", font_large, TEXT_COLOR, WIDTH//2, 80)
-
-    botoes_texto = ["Jogar", "Instruções", "Scores", "Sair"]
-    start_y = 180
+    lista_botoes = ["Jogar", "Instruções", "Scores", "Sair"]
+    inicio_y = 180
     espacamento = 70
 
-    botoes = {}
-    for i, texto in enumerate(botoes_texto):
-        rect = draw_button(screen, texto, WIDTH//2 - 100, start_y + (i * espacamento), 200, 50, mouse_pos)
-        botoes[texto.upper()] = rect
+    botoes_rects = {}
+    for i, texto in enumerate(lista_botoes):
+        # Centraliza os botões
+        rect = desenhar_botao(tela, texto, LARGURA_TELA//2 - 100, inicio_y + (i * espacamento), 200, 50, posicao_mouse)
+        # Salva com a chave em maiúsculo para o main.py usar (ex: 'JOGAR', 'SCORES')
+        botoes_rects[texto.upper()] = rect
 
-    return botoes
+    return botoes_rects
 
-def draw_instructions(screen, mouse_pos):
-    screen.fill(BACKGROUND_COLOR)
-    desenhar_texto_centralizado(screen, "COMO JOGAR", font_large, TEXT_COLOR, WIDTH//2, 50)
+def desenhar_instrucoes(tela, posicao_mouse):
+    """Tela de Como Jogar."""
+    tela.fill(COR_FUNDO)
+    desenhar_texto_centralizado(tela, "COMO JOGAR", fonte_titulo, COR_TEXTO, LARGURA_TELA//2, 50)
 
     regras = [
         "O Jogo da Velha Ultimate é jogado em um tabuleiro 9x9.",
@@ -60,213 +62,245 @@ def draw_instructions(screen, mouse_pos):
         "4. Ganhe o jogo alinhando 3 vitórias de tabuleiros."
     ]
 
-    y = 120
+    pos_y = 120
     for linha in regras:
         if "REGRAS" in linha:
-            color, font = PLAYER_O_COLOR, font_medium
+            cor, fonte = COR_JOGADOR_O, fonte_media
         else:
-            color, font = TEXT_COLOR, font_small
+            cor, fonte = COR_TEXTO, fonte_pequena
 
-        surf = font.render(linha, True, color)
-        screen.blit(surf, (WIDTH//2 - 250, y))
-        y += 35
+        surf = fonte.render(linha, True, cor)
+        tela.blit(surf, (LARGURA_TELA//2 - 250, pos_y))
+        pos_y += 35
 
-    desenhar_texto_centralizado(screen, "Jogue para aprender!", font_small, BUTTON_COLOR, WIDTH//2, HEIGHT - 130)
-    botoes = {"VOLTAR": draw_button(screen, "Voltar", WIDTH//2 - 100, HEIGHT - 80, 200, 50, mouse_pos)}
-    return botoes
+    desenhar_texto_centralizado(tela, "Jogue para aprender!", fonte_pequena, COR_BOTAO, LARGURA_TELA//2, ALTURA_TELA - 130)
+    
+    # Botão de voltar (Centralizado embaixo)
+    botao_voltar = desenhar_botao(tela, "Voltar", LARGURA_TELA//2 - 100, ALTURA_TELA - 80, 200, 50, posicao_mouse)
+    return {"VOLTAR_CENTRO": botao_voltar}
 
-def draw_ultimate_board(screen, game, player_symbol, ai_symbol, mouse_pos):
-    screen.fill(BACKGROUND_COLOR)
-    desenhar_texto_centralizado(screen, "JOGO DA VELHA", font_large, TEXT_COLOR, WIDTH//2, 35)
+def desenhar_tabuleiro_ultimate(tela, jogo, simbolo_jogador, simbolo_ia, posicao_mouse):
+    """Desenha o tabuleiro complexo 9x9 e o estado do jogo."""
+    tela.fill(COR_FUNDO)
+    desenhar_texto_centralizado(tela, "JOGO DA VELHA", fonte_titulo, COR_TEXTO, LARGURA_TELA//2, 35)
 
-    board_size = 600
-    start_x = (WIDTH - board_size) // 2
-    start_y = 80
-    small_board_size = board_size // 3
-    cell_size = small_board_size // 3
+    # Configuração Geométrica
+    tamanho_tabuleiro = 600
+    inicio_x = (LARGURA_TELA - tamanho_tabuleiro) // 2
+    inicio_y = 80
+    tamanho_pequeno = tamanho_tabuleiro // 3
+    tamanho_celula = tamanho_pequeno // 3
 
-    # ATUALIZADO: Usando nomes em português
-    global_board = game.tabuleiro_global
-    boards = game.tabuleiros
+    # Busca dados do objeto Jogo
+    tabuleiro_global = jogo.tabuleiro_global
+    tabuleiros_locais = jogo.tabuleiros_locais
 
-    # Desenhar fundos e vencedores
-    for big_idx in range(9):
-        big_row, big_col = divmod(big_idx, 3)
-        bx = start_x + big_col * small_board_size
-        by = start_y + big_row * small_board_size
+    # 1. DESENHAR FUNDOS (Destaques e Vitórias)
+    for idx_grande in range(9):
+        linha_g, col_g = divmod(idx_grande, 3)
+        base_x = inicio_x + col_g * tamanho_pequeno
+        base_y = inicio_y + linha_g * tamanho_pequeno
 
-        # ATUALIZADO: game.jogo_acabou e game.proximo_tabuleiro
-        if not game.jogo_acabou and (game.proximo_tabuleiro is None or game.proximo_tabuleiro == big_idx) and global_board[big_idx] == '':
-            pygame.draw.rect(screen, ACTIVE_BOARD_BG, (bx+4, by+4, small_board_size-8, small_board_size-8), border_radius=5)
+        # Destaque: Tabuleiro onde o jogador DEVE jogar agora
+        # (Se o jogo não acabou E (o foco é livre OU o foco é este tabuleiro) E o tabuleiro não tem dono)
+        eh_tabuleiro_foco = (jogo.proximo_tabuleiro_foco is None or jogo.proximo_tabuleiro_foco == idx_grande)
+        if not jogo.jogo_acabou and eh_tabuleiro_foco and tabuleiro_global[idx_grande] == '':
+            pygame.draw.rect(tela, COR_TABULEIRO_ATIVO, (base_x+4, base_y+4, tamanho_pequeno-8, tamanho_pequeno-8), border_radius=5)
 
-        if global_board[big_idx] != '':
-            bg_color = WINNER_X_BG if global_board[big_idx] == 'X' else WINNER_O_BG
-            pygame.draw.rect(screen, bg_color, (bx, by, small_board_size, small_board_size))
+        # Destaque: Tabuleiro já VENCIDO
+        if tabuleiro_global[idx_grande] != '':
+            cor_fundo = COR_VITORIA_X if tabuleiro_global[idx_grande] == 'X' else COR_VITORIA_O
+            pygame.draw.rect(tela, cor_fundo, (base_x, base_y, tamanho_pequeno, tamanho_pequeno))
 
-    # Grades
-    for i in range(1, 3):
-        # ... (código de grade mantém igual) ...
-        # Se quiser simplificar, copie o código de grade do anterior aqui, 
-        # mas as variáveis importantes já foram traduzidas acima.
-        pass
-
-    # Desenho completo das grades (simplificado para caber aqui)
+    # 2. DESENHAR LINHAS DA GRADE
+    # Linhas Finas (dividem as células pequenas)
     for row in range(9):
-        py = start_y + row * cell_size
-        if row % 3 != 0: pygame.draw.line(screen, GRID_COLOR_SMALL, (start_x, py), (start_x + board_size, py), 2)
+        py = inicio_y + row * tamanho_celula
+        if row % 3 != 0: 
+            # CORRIGIDO AQUI EMBAIXO (Adicionei o parametro width=2 corretamente)
+            pygame.draw.line(tela, COR_GRADE_PEQUENA, (inicio_x, py), (inicio_x + tamanho_tabuleiro, py), 2)
+            
     for col in range(9):
-        px = start_x + col * cell_size
-        if col % 3 != 0: pygame.draw.line(screen, GRID_COLOR_SMALL, (px, start_y), (px, start_y + board_size), 2)
+        px = inicio_x + col * tamanho_celula
+        if col % 3 != 0: 
+            # CORRIGIDO AQUI EMBAIXO
+            pygame.draw.line(tela, COR_GRADE_PEQUENA, (px, inicio_y), (px, inicio_y + tamanho_tabuleiro), 2)
+    
+    # Linhas Grossas (dividem os tabuleiros grandes)
     for i in range(1, 3):
-        pos = i * small_board_size
-        pygame.draw.line(screen, GRID_COLOR_GLOBAL, (start_x, start_y + pos), (start_x + board_size, start_y + pos), 6)
-        pygame.draw.line(screen, GRID_COLOR_GLOBAL, (start_x + pos, start_y), (start_x + pos, start_y + board_size), 6)
+        pos = i * tamanho_pequeno
+        pygame.draw.line(tela, COR_GRADE_GLOBAL, (inicio_x, inicio_y + pos), (inicio_x + tamanho_tabuleiro, inicio_y + pos), 6)
+        pygame.draw.line(tela, COR_GRADE_GLOBAL, (inicio_x + pos, inicio_y), (inicio_x + pos, inicio_y + tamanho_tabuleiro), 6)
 
-    # Desenhar símbolos
-    for big_row in range(3):
-        for big_col in range(3):
-            big_idx = big_row * 3 + big_col
-            bx = start_x + big_col * small_board_size
-            by = start_y + big_row * small_board_size
+    # 3. DESENHAR SÍMBOLOS (X e O)
+    for linha_g in range(3):
+        for col_g in range(3):
+            idx_grande = linha_g * 3 + col_g
+            base_x = inicio_x + col_g * tamanho_pequeno
+            base_y = inicio_y + linha_g * tamanho_pequeno
 
-            if global_board[big_idx] != '':
-                winner = global_board[big_idx]
-                desenhar_texto_centralizado(screen, winner, font_winner, (255,255,255), bx + small_board_size//2, by + small_board_size//2)
+            # Se o tabuleiro grande já tem dono, desenha um Símbolo Gigante
+            if tabuleiro_global[idx_grande] != '':
+                vencedor_local = tabuleiro_global[idx_grande]
+                desenhar_texto_centralizado(tela, vencedor_local, fonte_vencedor, (255,255,255), base_x + tamanho_pequeno//2, base_y + tamanho_pequeno//2)
                 continue
 
-            board = boards[big_idx]
+            # Caso contrário, desenha os símbolos pequenos das células
+            tabuleiro_atual = tabuleiros_locais[idx_grande]
             for sr in range(3):
                 for sc in range(3):
-                    sym = board[sr][sc]
-                    cx = bx + sc * cell_size + cell_size//2
-                    cy = by + sr * cell_size + cell_size//2
+                    simbolo = tabuleiro_atual[sr][sc]
+                    centro_cx = base_x + sc * tamanho_celula + tamanho_celula//2
+                    centro_cy = base_y + sr * tamanho_celula + tamanho_celula//2
 
-                    if sym == 'X':
-                        desenhar_texto_centralizado(screen, "X", font_symbol, PLAYER_X_COLOR, cx, cy)
-                    elif sym == 'O':
-                        desenhar_texto_centralizado(screen, "O", font_symbol, PLAYER_O_COLOR, cx, cy)
-                    # ATUALIZADO: game.jogo_acabou e game.jogador_atual
-                    elif not game.jogo_acabou and game.jogador_atual == player_symbol:
-                        cell_rect = pygame.Rect(bx + sc*cell_size, by + sr*cell_size, cell_size, cell_size)
-                        if cell_rect.collidepoint(mouse_pos) and (game.proximo_tabuleiro is None or game.proximo_tabuleiro == big_idx):
-                            s = pygame.Surface((cell_size-4, cell_size-4), pygame.SRCALPHA)
-                            s.fill((255, 255, 255, 30))
-                            screen.blit(s, (cell_rect.x+2, cell_rect.y+2))
+                    if simbolo == 'X':
+                        desenhar_texto_centralizado(tela, "X", fonte_simbolo, COR_JOGADOR_X, centro_cx, centro_cy)
+                    elif simbolo == 'O':
+                        desenhar_texto_centralizado(tela, "O", fonte_simbolo, COR_JOGADOR_O, centro_cx, centro_cy)
+                    
+                    # Feedback visual (Hover) nas células vazias válidas
+                    elif not jogo.jogo_acabou and jogo.jogador_atual == simbolo_jogador:
+                        rect_celula = pygame.Rect(base_x + sc*tamanho_celula, base_y + sr*tamanho_celula, tamanho_celula, tamanho_celula)
+                        
+                        # Verifica se o mouse está sobre e se é um tabuleiro válido
+                        if rect_celula.collidepoint(posicao_mouse) and (jogo.proximo_tabuleiro_foco is None or jogo.proximo_tabuleiro_foco == idx_grande):
+                            superficie_transparente = pygame.Surface((tamanho_celula-4, tamanho_celula-4), pygame.SRCALPHA)
+                            superficie_transparente.fill((255, 255, 255, 30)) # Branco transparente
+                            tela.blit(superficie_transparente, (rect_celula.x+2, rect_celula.y+2))
 
+    # Botões de controle in-game
     botoes = {
-        "VOLTAR": draw_button(screen, "Voltar", 50, 50, 100, 40, mouse_pos),
-        "REINICIAR": draw_button(screen, "Reiniciar", WIDTH - 150, 50, 120, 40, mouse_pos)
+        "VOLTAR_CANTO": desenhar_botao(tela, "Voltar", 50, 50, 100, 40, posicao_mouse),
+        "REINICIAR": desenhar_botao(tela, "Reiniciar", LARGURA_TELA - 150, 50, 120, 40, posicao_mouse)
     }
 
-    # ATUALIZADO: game.jogo_acabou, game.jogador_atual e game.vencedor
-    if not game.jogo_acabou:
-        msg = "Sua vez" if game.jogador_atual == player_symbol else "IA Pensando..."
-        col = PLAYER_X_COLOR if game.jogador_atual == player_symbol else PLAYER_O_COLOR
+    # Barra de Status Inferior
+    if not jogo.jogo_acabou:
+        msg = "Sua vez" if jogo.jogador_atual == simbolo_jogador else "IA Pensando..."
+        cor_status = COR_JOGADOR_X if jogo.jogador_atual == simbolo_jogador else COR_JOGADOR_O
     else:
-        msg = f"Vencedor: {game.vencedor}" if game.vencedor else "Empate!"
-        col = TEXT_COLOR
+        msg = f"Vencedor: {jogo.vencedor}" if jogo.vencedor else "Empate!"
+        cor_status = COR_TEXTO
 
-    desenhar_texto_centralizado(screen, msg, font_medium, col, WIDTH//2, start_y + board_size + 30)
+    desenhar_texto_centralizado(tela, msg, fonte_media, cor_status, LARGURA_TELA//2, inicio_y + tamanho_tabuleiro + 30)
+    
     return botoes
 
-def draw_scores(screen, mouse_pos):
-    screen.fill(BACKGROUND_COLOR)
-    desenhar_texto_centralizado(screen, "HALL DA FAMA", font_large, TEXT_COLOR, WIDTH//2, 50)
+def desenhar_placar(tela, posicao_mouse):
+    """Tela de Ranking e Estatísticas."""
+    tela.fill(COR_FUNDO)
+    desenhar_texto_centralizado(tela, "HALL DA FAMA", fonte_titulo, COR_TEXTO, LARGURA_TELA//2, 50)
 
-    pygame.draw.line(screen, GRID_COLOR_SMALL, (WIDTH//2, 140), (WIDTH//2, HEIGHT - 120), 2)
+    # Linha divisória vertical
+    pygame.draw.line(tela, COR_GRADE_PEQUENA, (LARGURA_TELA//2, 140), (LARGURA_TELA//2, ALTURA_TELA - 120), 2)
 
-    # --- LADO ESQUERDO: STATS ---
-    desenhar_texto_centralizado(screen, "Estatísticas Globais", font_medium, BUTTON_COLOR, 200, 150)
+    # --- COLUNA ESQUERDA: ESTATÍSTICAS GERAIS ---
+    desenhar_texto_centralizado(tela, "Estatísticas Globais", fonte_media, COR_BOTAO, 200, 150)
     
-    # Busca dados frescos
-    stats = get_general_stats() 
+    stats = obter_estatisticas_gerais() 
 
-    stats_list = [
-        (f"Jogos: {stats['total_partidas']}", TEXT_COLOR),
-        (f"Vit. Player: {stats['vitorias_player']}", PLAYER_X_COLOR),
-        (f"Vit. IA: {stats['vitorias_ai']}", PLAYER_O_COLOR),
+    linhas_stats = [
+        (f"Jogos: {stats['total_partidas']}", COR_TEXTO),
+        (f"Vit. Player: {stats['vitorias_jogador']}", COR_JOGADOR_X),
+        (f"Vit. IA: {stats['vitorias_ia']}", COR_JOGADOR_O),
         (f"Empates: {stats['empates']}", (200,200,200))
     ]
 
-    for i, (txt, col) in enumerate(stats_list):
-        desenhar_texto_centralizado(screen, txt, font_small, col, 200, 220 + i*40)
+    for i, (txt, cor) in enumerate(linhas_stats):
+        desenhar_texto_centralizado(tela, txt, fonte_pequena, cor, 200, 220 + i*40)
 
-    # --- LADO DIREITO: RANKING ---
-    desenhar_texto_centralizado(screen, "Top Jogadores", font_medium, (255, 215, 0), WIDTH - 200, 150)
+    # --- COLUNA DIREITA: TOP JOGADORES ---
+    desenhar_texto_centralizado(tela, "Top Jogadores", fonte_media, (255, 215, 0), LARGURA_TELA - 200, 150)
     
-    # Busca ranking fresco
-    ranking = get_ranking()
-
+    ranking = gerar_ranking()
+    
     if not ranking:
-        desenhar_texto_centralizado(screen, "Sem vitórias ainda...", font_small, (100,100,100), WIDTH - 200, 220)
+        desenhar_texto_centralizado(tela, "Sem dados...", fonte_pequena, (100,100,100), LARGURA_TELA - 200, 220)
     else:
-        # Mostra apenas Top 5
-        for i, (nome, vitorias) in enumerate(ranking[:5]):
-            y = 220 + i * 40
+        # Exibe apenas os Top 5
+        for i, dados in enumerate(ranking[:5]):
+            nome = dados["nome"]
+            vitorias = dados["vitorias"]
+            taxa = dados["taxa"]
+            total = dados["total"]
+
+            # Cores baseadas na posição (Ouro, Prata, Bronze)
+            if i == 0: cor_rank = (255, 215, 0)      
+            elif i == 1: cor_rank = (192, 192, 192)  
+            elif i == 2: cor_rank = (205, 127, 50)   
+            else: cor_rank = COR_TEXTO
             
-            # Cores das medalhas
-            if i == 0: cor = (255, 215, 0)   # Ouro
-            elif i == 1: cor = (192, 192, 192) # Prata
-            elif i == 2: cor = (205, 127, 50)  # Bronze
-            else: cor = TEXT_COLOR
+            y_pos = 220 + i * 45 
 
-            # Nome à esquerda da coluna
-            nome_surf = font_small.render(f"{i+1}. {nome}", True, cor)
-            screen.blit(nome_surf, (WIDTH//2 + 50, y))
+            # Nome do Jogador (Esquerda da coluna)
+            # Trunca nomes muito longos
+            nome_exibicao = nome[:10] + ".." if len(nome) > 10 else nome
+            surf_nome = fonte_pequena.render(f"{i+1}. {nome_exibicao}", True, cor_rank)
+            tela.blit(surf_nome, (LARGURA_TELA//2 + 40, y_pos))
 
-            # Vitórias à direita da coluna
-            vit_surf = font_small.render(f"{vitorias} v.", True, cor)
-            screen.blit(vit_surf, (WIDTH - 50 - vit_surf.get_width(), y))
+            # Estatísticas (Direita da coluna)
+            texto_stats = f"{vitorias}v/{total}j ({taxa}%)"
+            
+            # Se taxa de vitória > 50%, destaca em verde
+            cor_stat = COR_BOTAO_HOVER if taxa >= 50 else cor_rank
+            surf_stats = fonte_minuscula.render(texto_stats, True, cor_stat)
+            
+            tela.blit(surf_stats, (LARGURA_TELA - 40 - surf_stats.get_width(), y_pos + 5))
+            
+            # Linha separadora sutil
+            pygame.draw.line(tela, (40, 45, 60), (LARGURA_TELA//2 + 30, y_pos + 30), (LARGURA_TELA - 30, y_pos + 30), 1)
 
-    botoes = {"VOLTAR": draw_button(screen, "Voltar", WIDTH//2 - 100, HEIGHT - 80, 200, 50, mouse_pos)}
-    return botoes
+    botao_voltar = desenhar_botao(tela, "Voltar", LARGURA_TELA//2 - 100, ALTURA_TELA - 80, 200, 50, posicao_mouse)
+    return {"VOLTAR_CENTRO": botao_voltar}
 
-def draw_name_input(screen, current_name):
-    screen.fill(BACKGROUND_COLOR)
-    desenhar_texto_centralizado(screen, "LOGIN / REGISTRO", font_large, PLAYER_O_COLOR, WIDTH//2, 120)
-    desenhar_texto_centralizado(screen, "Digite seu Nickname:", font_small, TEXT_COLOR, WIDTH//2, 200)
+def desenhar_entrada_nome(tela, nome_atual):
+    """Tela de Input de Nome (Login)."""
+    tela.fill(COR_FUNDO)
+    desenhar_texto_centralizado(tela, "LOGIN / REGISTRO", fonte_titulo, COR_JOGADOR_O, LARGURA_TELA//2, 120)
+    desenhar_texto_centralizado(tela, "Digite seu Nickname:", fonte_pequena, COR_TEXTO, LARGURA_TELA//2, 200)
 
-    rect_input = pygame.Rect(WIDTH//2 - 200, 260, 400, 60)
+    rect_input = pygame.Rect(LARGURA_TELA//2 - 200, 260, 400, 60)
 
-    # PERFORMANCE: se check_user_exists fizer IO, cachear o resultado quando current_name mudar.
-    existe = check_user_exists(current_name) if current_name else False
-    cor_borda = (255, 215, 0) if existe and len(current_name) > 0 else (BUTTON_HOVER_COLOR if len(current_name) > 0 else TEXT_COLOR)
+    # Verifica se usuário já existe para dar feedback visual
+    existe = verificar_usuario(nome_atual) if nome_atual else False
+    
+    cor_borda = (255, 215, 0) if existe and len(nome_atual) > 0 else (COR_BOTAO_HOVER if len(nome_atual) > 0 else COR_TEXTO)
     msg = "Usuário encontrado!" if existe else "Novo usuário"
 
-    pygame.draw.rect(screen, ACTIVE_BOARD_BG, rect_input, border_radius=10)
-    pygame.draw.rect(screen, cor_borda, rect_input, 2, border_radius=10)
+    pygame.draw.rect(tela, COR_TABULEIRO_ATIVO, rect_input, border_radius=10)
+    pygame.draw.rect(tela, cor_borda, rect_input, 2, border_radius=10)
 
-    texto_display = current_name.upper() if current_name else "_"
-    desenhar_texto_centralizado(screen, texto_display, font_medium, TEXT_COLOR, rect_input.centerx, rect_input.centery)
+    texto_exibicao = nome_atual.upper() if nome_atual else "_"
+    desenhar_texto_centralizado(tela, texto_exibicao, fonte_media, COR_TEXTO, rect_input.centerx, rect_input.centery)
 
     botoes = {}
-    if len(current_name) > 0:
-        desenhar_texto_centralizado(screen, msg, font_tiny, cor_borda, WIDTH//2, 340)
-        desenhar_texto_centralizado(screen, "Pressione ENTER", font_tiny, BUTTON_HOVER_COLOR, WIDTH//2, 380)
-        botoes["ENTER"] = rect_input  # opcional: expõe rect da caixa de input
+    if len(nome_atual) > 0:
+        desenhar_texto_centralizado(tela, msg, fonte_minuscula, cor_borda, LARGURA_TELA//2, 340)
+        desenhar_texto_centralizado(tela, "Pressione ENTER", fonte_minuscula, COR_BOTAO_HOVER, LARGURA_TELA//2, 380)
+        botoes["ENTER"] = rect_input
 
     return botoes
 
-def draw_pin_input(screen, current_pin, player_name, is_registering, erro_msg=""):
-    screen.fill(BACKGROUND_COLOR)
-    titulo = f"CRIAR SENHA: {player_name}" if is_registering else f"OLÁ, {player_name}"
-    desenhar_texto_centralizado(screen, titulo, font_large, (255, 215, 0), WIDTH//2, 120)
-    desenhar_texto_centralizado(screen, "Digite PIN (4 números):", font_small, TEXT_COLOR, WIDTH//2, 200)
+def desenhar_entrada_senha(tela, pin_atual, nome_jogador, eh_novo_registro, msg_erro=""):
+    """Tela de Input de Senha (PIN)."""
+    tela.fill(COR_FUNDO)
+    titulo = f"CRIAR SENHA: {nome_jogador}" if eh_novo_registro else f"OLÁ, {nome_jogador}"
+    desenhar_texto_centralizado(tela, titulo, fonte_titulo, (255, 215, 0), LARGURA_TELA//2, 120)
+    desenhar_texto_centralizado(tela, "Digite PIN (4 números):", fonte_pequena, COR_TEXTO, LARGURA_TELA//2, 200)
 
-    rect_input = pygame.Rect(WIDTH//2 - 100, 260, 200, 60)
-    cor_borda = PLAYER_X_COLOR if erro_msg else PLAYER_O_COLOR
+    rect_input = pygame.Rect(LARGURA_TELA//2 - 100, 260, 200, 60)
+    cor_borda = COR_JOGADOR_X if msg_erro else COR_JOGADOR_O
 
-    pygame.draw.rect(screen, ACTIVE_BOARD_BG, rect_input, border_radius=10)
-    pygame.draw.rect(screen, cor_borda, rect_input, 2, border_radius=10)
+    pygame.draw.rect(tela, COR_TABULEIRO_ATIVO, rect_input, border_radius=10)
+    pygame.draw.rect(tela, cor_borda, rect_input, 2, border_radius=10)
 
-    # current_pin deve ser string; se for outro tipo, converta ao chamar
-    mask = "*" * len(str(current_pin))
-    desenhar_texto_centralizado(screen, mask, font_medium, TEXT_COLOR, rect_input.centerx, rect_input.centery)
+    # Mascara a senha com asteriscos
+    mascara = "*" * len(str(pin_atual))
+    desenhar_texto_centralizado(tela, mascara, fonte_media, COR_TEXTO, rect_input.centerx, rect_input.centery)
 
-    if erro_msg:
-        desenhar_texto_centralizado(screen, erro_msg, font_tiny, PLAYER_X_COLOR, WIDTH//2, 340)
+    if msg_erro:
+        desenhar_texto_centralizado(tela, msg_erro, fonte_minuscula, COR_JOGADOR_X, LARGURA_TELA//2, 340)
 
-    desenhar_texto_centralizado(screen, "ESC para voltar", font_tiny, (100,100,100), WIDTH//2, 430)
+    desenhar_texto_centralizado(tela, "ESC para voltar", fonte_minuscula, (100,100,100), LARGURA_TELA//2, 430)
 
-    botoes = {"ESC": rect_input}
-    return botoes
+    return {"ESC": rect_input}

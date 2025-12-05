@@ -1,0 +1,14 @@
+[
+    {
+        "id_partida": "20251205_191412",
+        "data_hora": "05/12/2025 19:14",
+        "duracao_segundos": 54.16,
+        "jogadores": {
+            "X": "MARE",
+            "O": "IA Ultimate"
+        },
+        "vencedor": "X",
+        "total_jogadas": 39,
+        "status": "FINALIZADO"
+    }
+]

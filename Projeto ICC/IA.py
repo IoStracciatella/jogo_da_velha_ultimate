@@ -1,43 +1,51 @@
 import random
-from game import JogoDaVelha
+# Não precisamos importar o jogo inteiro, só receberemos o objeto dele
 
-class UltimateAI:
-    def __init__(self, symbol):
-        self.symbol = symbol
-        self.opponent_symbol = 'X' if symbol == 'O' else 'O'
+class InteligenciaArtificial:
+    def __init__(self, simbolo_ia):
+        self.simbolo = simbolo_ia
+        self.simbolo_oponente = 'X' if simbolo_ia == 'O' else 'O'
 
-    # --- Verifica vitória no tabuleiro local ---
-    def check_win(self, board, player):
-        lines = [
-            [(0,0),(0,1),(0,2)], [(1,0),(1,1),(1,2)], [(2,0),(2,1),(2,2)],
-            [(0,0),(1,0),(2,0)], [(0,1),(1,1),(2,1)], [(0,2),(1,2),(2,2)],
-            [(0,0),(1,1),(2,2)], [(0,2),(1,1),(2,0)]
+    def verificar_vitoria_simulada(self, tabuleiro_local, jogador):
+        """Verifica se um tabuleiro 3x3 tem vencedor."""
+        linhas_vitoria = [
+            [(0,0),(0,1),(0,2)], [(1,0),(1,1),(1,2)], [(2,0),(2,1),(2,2)], # H
+            [(0,0),(1,0),(2,0)], [(0,1),(1,1),(2,1)], [(0,2),(1,2),(2,2)], # V
+            [(0,0),(1,1),(2,2)], [(0,2),(1,1),(2,0)]                       # D
         ]
-        for line in lines:
-            if all(board[r][c] == player for r,c in line):
+        for linha in linhas_vitoria:
+            if all(tabuleiro_local[r][c] == jogador for r,c in linha):
                 return True
         return False
 
-    # --- IA simples: vence > bloqueia > aleatório ---
-    def get_best_move(self, game):
-        valid_moves = game.obter_movimentos_validos()
-        if not valid_moves:
+    def obter_melhor_jogada(self, jogo):
+        """
+        Estratégia:
+        1. Se puder ganhar um tabuleiro local agora, ganhe.
+        2. Se o oponente for ganhar um tabuleiro local na próxima, bloqueie.
+        3. Caso contrário, jogue aleatório.
+        """
+        movimentos_possiveis = jogo.obter_movimentos_validos()
+        
+        if not movimentos_possiveis:
             return None
 
-        # 1. Tenta ganhar algum mini-tabuleiro
-        for (b, r, c) in valid_moves:
-            # copia do tabuleiro local
-            temp = [row[:] for row in game.tabuleiros[b]]
-            temp[r][c] = self.symbol
-            if self.check_win(temp, self.symbol):
-                return (b, r, c)
+        # 1. Tenta ganhar (Ataque)
+        for (idx_tab, lin, col) in movimentos_possiveis:
+            # Cria cópia simples do tabuleiro local para simular
+            copia_local = [linha[:] for linha in jogo.tabuleiros_locais[idx_tab]]
+            copia_local[lin][col] = self.simbolo
+            
+            if self.verificar_vitoria_simulada(copia_local, self.simbolo):
+                return (idx_tab, lin, col)
 
-        # 2. Tenta bloquear vitória do adversário
-        for (b, r, c) in valid_moves:
-            temp = [row[:] for row in game.tabuleiros[b]]
-            temp[r][c] = self.opponent_symbol
-            if self.check_win(temp, self.opponent_symbol):
-                return (b, r, c)
+        # 2. Tenta bloquear (Defesa)
+        for (idx_tab, lin, col) in movimentos_possiveis:
+            copia_local = [linha[:] for linha in jogo.tabuleiros_locais[idx_tab]]
+            copia_local[lin][col] = self.simbolo_oponente
+            
+            if self.verificar_vitoria_simulada(copia_local, self.simbolo_oponente):
+                return (idx_tab, lin, col)
 
-        # 3. Se nada urgente, escolhe aleatório
-        return random.choice(valid_moves)
+        # 3. Aleatório
+        return random.choice(movimentos_possiveis)

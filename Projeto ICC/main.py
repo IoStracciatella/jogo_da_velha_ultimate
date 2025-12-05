@@ -3,216 +3,251 @@ import sys
 from datetime import datetime
 from settings import *
 from game import JogoDaVelha
-from IA import UltimateAI
-from ui import draw_menu, draw_ultimate_board, draw_scores, draw_instructions, draw_name_input, draw_pin_input
-from scores import save_full_match, check_user_exists, verify_pin, register_user
+from IA import InteligenciaArtificial
+from ui import (
+    desenhar_menu, 
+    desenhar_tabuleiro_ultimate, 
+    desenhar_placar, 
+    desenhar_instrucoes, 
+    desenhar_entrada_nome, 
+    desenhar_entrada_senha
+)
+from scores import salvar_partida_completa, realizar_login, registrar_usuario
 
-# Inicialização
+# --- INICIALIZAÇÃO ---
 pygame.init()
-screen = pygame.display.set_mode((WIDTH, HEIGHT))
-pygame.display.set_caption(CAPTION)
+tela = pygame.display.set_mode((LARGURA_TELA, ALTURA_TELA))
+pygame.display.set_caption(TITULO_JANELA)
 
-# Configurar Jogo
-game = JogoDaVelha()
-ai_symbol = 'O'
-player_symbol = 'X'
-ai = UltimateAI(ai_symbol)
+# --- CONFIGURAÇÃO DO JOGO ---
+jogo = JogoDaVelha()
+simbolo_ia = 'O'
+simbolo_jogador = 'X'
+inteligencia_artificial = InteligenciaArtificial(simbolo_ia)
 
-# Variáveis Globais
-current_state = GameState.MENU
-running = True
-ai_thinking = False
-score_update_pending = False
-game_start_time = None
-player_name = ""
-player_pin = ""
-is_registering_pin = False
-pin_error_message = ""
+# --- VARIÁVEIS GLOBAIS DE CONTROLE ---
+estado_atual = EstadoJogo.MENU
+jogo_rodando = True
+ia_pensando = False
+atualizacao_pendente = False
+momento_inicio_partida = None
 
-def make_ai_move():
-    # ATUALIZADO: game.jogo_acabou e game.jogador_atual
-    if not game.jogo_acabou and game.jogador_atual == ai_symbol:
-        move = ai.get_best_move(game)
-        if move:
-            # ATUALIZADO: game.fazer_jogada
-            game.fazer_jogada(*move)
+# Dados de Login/Registro
+nome_jogador = ""
+senha_jogador = ""
+estamos_registrando_senha = False
+mensagem_erro_senha = ""
 
-def criar_areas_de_clique():
+def realizar_jogada_ia():
+    """Executa a vez da Inteligência Artificial."""
+    # Verifica se o jogo não acabou e se é a vez da IA
+    if not jogo.jogo_acabou and jogo.jogador_atual == simbolo_ia:
+        movimento = inteligencia_artificial.obter_melhor_jogada(jogo)
+        if movimento:
+            jogo.fazer_jogada(*movimento)
+
+def criar_areas_de_clique_tabuleiro():
+    """
+    Gera os retângulos de colisão para cada célula do tabuleiro.
+    Retorna uma lista de tuplas: (Rect, indice_tabuleiro_grande, linha, coluna)
+    """
     lista_clicavel = []
-    board_size = 600
-    start_x = (WIDTH - board_size) // 2
-    start_y = 80
-    small_board_size = board_size // 3
-    cell_size = small_board_size // 3
+    tamanho_tabuleiro = 600
+    inicio_x = (LARGURA_TELA - tamanho_tabuleiro) // 2
+    inicio_y = 80
     
-    for big_row in range(3):
-        for big_col in range(3):
-            big_idx = big_row * 3 + big_col
-            big_x = start_x + big_col * small_board_size
-            big_y = start_y + big_row * small_board_size
+    # Cálculos proporcionais
+    tamanho_pequeno = tamanho_tabuleiro // 3
+    tamanho_celula = tamanho_pequeno // 3
+    
+    for linha_g in range(3):
+        for col_g in range(3):
+            idx_grande = linha_g * 3 + col_g
+            pos_x_grande = inicio_x + col_g * tamanho_pequeno
+            pos_y_grande = inicio_y + linha_g * tamanho_pequeno
             
-            for small_row in range(3):
-                for small_col in range(3):
-                    cell_x = big_x + small_col * cell_size
-                    cell_y = big_y + small_row * cell_size
+            for linha_p in range(3):
+                for col_p in range(3):
+                    pos_x_celula = pos_x_grande + col_p * tamanho_celula
+                    pos_y_celula = pos_y_grande + linha_p * tamanho_celula
                     
-                    retangulo = pygame.Rect(cell_x, cell_y, cell_size, cell_size)
-                    lista_clicavel.append((retangulo, big_idx, small_row, small_col))
+                    retangulo = pygame.Rect(pos_x_celula, pos_y_celula, tamanho_celula, tamanho_celula)
+                    lista_clicavel.append((retangulo, idx_grande, linha_p, col_p))
     return lista_clicavel
 
-def criar_botoes_menu():
+def criar_botoes_interacao():
+    """
+    Define as áreas de clique para os botões da interface.
+    Nota: As posições devem bater com o que é desenhado no 'ui.py'.
+    """
     botoes = {}
-    center_x = WIDTH // 2
-    half_width = 100 
-    h = 50 
+    centro_x = LARGURA_TELA // 2
+    meia_largura = 100 
+    altura = 50 
     
-    botoes['JOGAR']      = pygame.Rect(center_x - half_width, 180, 200, h)
-    botoes['INSTRUCOES'] = pygame.Rect(center_x - half_width, 250, 200, h)
-    botoes['SCORES']     = pygame.Rect(center_x - half_width, 320, 200, h)
-    botoes['SAIR']       = pygame.Rect(center_x - half_width, 390, 200, h)
+    # Botões do Menu Principal
+    botoes['JOGAR']      = pygame.Rect(centro_x - meia_largura, 180, 200, altura)
+    botoes['INSTRUCOES'] = pygame.Rect(centro_x - meia_largura, 250, 200, altura)
+    botoes['SCORES']     = pygame.Rect(centro_x - meia_largura, 320, 200, altura) # Vai para o RANKING
+    botoes['SAIR']       = pygame.Rect(centro_x - meia_largura, 390, 200, altura)
     
-    botoes['VOLTAR_CENTRO'] = pygame.Rect(center_x - half_width, HEIGHT - 80, 200, 50)
+    # Botões de Navegação
+    botoes['VOLTAR_CENTRO'] = pygame.Rect(centro_x - meia_largura, ALTURA_TELA - 80, 200, 50)
     botoes['VOLTAR_CANTO']  = pygame.Rect(50, 50, 100, 40)
-    botoes['REINICIAR']     = pygame.Rect(WIDTH - 150, 50, 120, 40)
+    botoes['REINICIAR']     = pygame.Rect(LARGURA_TELA - 150, 50, 120, 40)
     
     return botoes
 
-# --- PREPARAÇÃO ---
-areas_do_tabuleiro = criar_areas_de_clique()
-meus_botoes = criar_botoes_menu()
+# --- PREPARAÇÃO INICIAL ---
+areas_do_tabuleiro = criar_areas_de_clique_tabuleiro()
+meus_botoes = criar_botoes_interacao()
 
 # --- LOOP PRINCIPAL ---
-while running:
-    mouse_pos = pygame.mouse.get_pos()
+while jogo_rodando:
+    posicao_mouse = pygame.mouse.get_pos()
     
-    for event in pygame.event.get():
-        if event.type == pygame.QUIT:
-             running = False
+    for evento in pygame.event.get():
+        if evento.type == pygame.QUIT:
+             jogo_rodando = False
 
-        if event.type == pygame.KEYDOWN:
-            if current_state == GameState.NOME:
-                if event.key == pygame.K_RETURN:
-                    if len(player_name) > 0:
-                        user_exists = check_user_exists(player_name)
-                        current_state = GameState.SENHA
-                        player_pin = "" 
-                        pin_error_message = ""
-                        is_registering_pin = not user_exists
-                elif event.key == pygame.K_BACKSPACE:
-                    player_name = player_name[:-1]
-                else:
-                    if len(player_name) < 12: player_name += event.unicode
-
-            elif current_state == GameState.SENHA:
-                if event.key == pygame.K_ESCAPE:
-                    current_state = GameState.NOME
-                    pin_error_message = ""
-                elif event.key == pygame.K_RETURN:
-                    if len(player_pin) == 4:
-                        if is_registering_pin:
-                            register_user(player_name, player_pin)
-                            current_state = GameState.JOGO
-                            # ATUALIZADO: reiniciar_jogo
-                            game.reiniciar_jogo()
-                            game_start_time = datetime.now()
-                        else:
-                            if verify_pin(player_name, player_pin):
-                                current_state = GameState.JOGO
-                                # ATUALIZADO: reiniciar_jogo
-                                game.reiniciar_jogo()
-                                game_start_time = datetime.now()
-                            else:
-                                pin_error_message = "SENHA INCORRETA!"
-                                player_pin = "" 
-                elif event.key == pygame.K_BACKSPACE:
-                    player_pin = player_pin[:-1]
-                elif event.unicode.isnumeric() and len(player_pin) < 4:
-                    player_pin += event.unicode
-
-        if event.type == pygame.MOUSEBUTTONDOWN:
-            if current_state == GameState.MENU:
-                if meus_botoes['JOGAR'].collidepoint(mouse_pos):
-                    current_state = GameState.NOME
-                    player_name = "" 
-                    score_update_pending = False
-                elif meus_botoes['INSTRUCOES'].collidepoint(mouse_pos):
-                    current_state = GameState.INSTRUCOES
-                elif meus_botoes['SCORES'].collidepoint(mouse_pos):
-                    current_state = GameState.SCORES
-                elif meus_botoes['SAIR'].collidepoint(mouse_pos):
-                    running = False
+        # --- EVENTOS DE TECLADO ---
+        if evento.type == pygame.KEYDOWN:
             
-            elif current_state in [GameState.INSTRUCOES, GameState.SCORES]:
-                if meus_botoes['VOLTAR_CENTRO'].collidepoint(mouse_pos):
-                    current_state = GameState.MENU
+            # Tela de digitar NOME
+            if estado_atual == EstadoJogo.NOME:
+                if evento.key == pygame.K_RETURN:
+                    if len(nome_jogador) > 0:
+                        # Avança para senha
+                        estado_atual = EstadoJogo.SENHA
+                        senha_jogador = "" 
+                        mensagem_erro_senha = ""
+                elif evento.key == pygame.K_BACKSPACE:
+                    nome_jogador = nome_jogador[:-1]
+                else:
+                    if len(nome_jogador) < 12: nome_jogador += evento.unicode
 
-            elif current_state == GameState.JOGO:
-                if meus_botoes['VOLTAR_CANTO'].collidepoint(mouse_pos):
-                    current_state = GameState.MENU
-                    score_update_pending = False
-                elif meus_botoes['REINICIAR'].collidepoint(mouse_pos):
-                    # ATUALIZADO: reiniciar_jogo
-                    game.reiniciar_jogo()
-                    ai_thinking = False
-                    score_update_pending = False
+            # Tela de digitar SENHA
+            elif estado_atual == EstadoJogo.SENHA:
+                if evento.key == pygame.K_ESCAPE:
+                    estado_atual = EstadoJogo.NOME
+                    mensagem_erro_senha = ""
+                elif evento.key == pygame.K_RETURN:
+                    if len(senha_jogador) == 4:
+                        # Tenta logar
+                        if realizar_login(nome_jogador, senha_jogador):
+                            estado_atual = EstadoJogo.JOGANDO
+                            jogo.reiniciar_jogo()
+                            momento_inicio_partida = datetime.now()
+                        else:
+                            # Se falhou login, tenta registrar (se usuário não existir) ou dá erro
+                            # Simplificação: Tenta registrar. Se falhar, é senha errada.
+                            if registrar_usuario(nome_jogador, senha_jogador):
+                                estado_atual = EstadoJogo.JOGANDO
+                                jogo.reiniciar_jogo()
+                                momento_inicio_partida = datetime.now()
+                            else:
+                                mensagem_erro_senha = "SENHA INCORRETA"
+                                senha_jogador = ""
+                                
+                elif evento.key == pygame.K_BACKSPACE:
+                    senha_jogador = senha_jogador[:-1]
+                elif evento.unicode.isnumeric() and len(senha_jogador) < 4:
+                    senha_jogador += evento.unicode
+
+        # --- EVENTOS DE MOUSE (CLIQUES) ---
+        if evento.type == pygame.MOUSEBUTTONDOWN:
+            
+            # -> MENU
+            if estado_atual == EstadoJogo.MENU:
+                if meus_botoes['JOGAR'].collidepoint(posicao_mouse):
+                    estado_atual = EstadoJogo.NOME
+                    nome_jogador = "" 
+                    atualizacao_pendente = False
+                elif meus_botoes['INSTRUCOES'].collidepoint(posicao_mouse):
+                    estado_atual = EstadoJogo.INSTRUCOES
+                elif meus_botoes['SCORES'].collidepoint(posicao_mouse):
+                    estado_atual = EstadoJogo.RANKING
+                elif meus_botoes['SAIR'].collidepoint(posicao_mouse):
+                    jogo_rodando = False
+            
+            # -> INSTRUÇÕES ou RANKING (Botão voltar)
+            elif estado_atual in [EstadoJogo.INSTRUCOES, EstadoJogo.RANKING]:
+                if meus_botoes['VOLTAR_CENTRO'].collidepoint(posicao_mouse):
+                    estado_atual = EstadoJogo.MENU
+
+            # -> JOGO (Tabuleiros e botões de controle)
+            elif estado_atual == EstadoJogo.JOGANDO:
+                if meus_botoes['VOLTAR_CANTO'].collidepoint(posicao_mouse):
+                    estado_atual = EstadoJogo.MENU
+                    atualizacao_pendente = False
+                elif meus_botoes['REINICIAR'].collidepoint(posicao_mouse):
+                    jogo.reiniciar_jogo()
+                    ia_pensando = False
+                    atualizacao_pendente = False
                 
-                # CLIQUE NO TABULEIRO
-                # ATUALIZADO: game.jogo_acabou e game.jogador_atual
-                elif not game.jogo_acabou and game.jogador_atual == player_symbol:
-                    for retangulo, board_idx, row, col in areas_do_tabuleiro:
-                        if retangulo.collidepoint(mouse_pos):
-                            # ATUALIZADO: game.proximo_tabuleiro
-                            if game.proximo_tabuleiro is None or game.proximo_tabuleiro == board_idx:
-                                # ATUALIZADO: game.fazer_jogada
-                                if game.fazer_jogada(board_idx, row, col):
-                                    ai_thinking = True
+                # Clique nas células do tabuleiro
+                elif not jogo.jogo_acabou and jogo.jogador_atual == simbolo_jogador:
+                    for retangulo, idx_tab, linha, coluna in areas_do_tabuleiro:
+                        if retangulo.collidepoint(posicao_mouse):
+                            # Verifica se o clique foi num tabuleiro válido (Foco ou Livre)
+                            if jogo.proximo_tabuleiro_foco is None or jogo.proximo_tabuleiro_foco == idx_tab:
+                                if jogo.fazer_jogada(idx_tab, linha, coluna):
+                                    ia_pensando = True
                             break 
 
-    # IA Logic
-    # ATUALIZADO: game.jogo_acabou e game.jogador_atual
-    if current_state == GameState.JOGO and not game.jogo_acabou and game.jogador_atual == ai_symbol:
-        if not ai_thinking: ai_thinking = True
-        elif ai_thinking:
+    # --- LÓGICA DA IA (Inteligência Artificial) ---
+    if estado_atual == EstadoJogo.JOGANDO and not jogo.jogo_acabou and jogo.jogador_atual == simbolo_ia:
+        if not ia_pensando: 
+            ia_pensando = True
+        elif ia_pensando:
+            # Pequeno delay para dar sensação de pensamento
             pygame.time.delay(500)
-            make_ai_move()
-            ai_thinking = False
+            realizar_jogada_ia()
+            ia_pensando = False
 
-    # Salvar Score
-    # ATUALIZADO: game.jogo_acabou e game.pontuacao_salva
-    if current_state == GameState.JOGO and game.jogo_acabou and not game.pontuacao_salva:
-        duration = 0
-        if game_start_time:
-            end_time = datetime.now()
-            duration = (end_time - game_start_time).total_seconds()
+    # --- SALVAMENTO AUTOMÁTICO AO FINAL DA PARTIDA ---
+    if estado_atual == EstadoJogo.JOGANDO and jogo.jogo_acabou and not jogo.pontuacao_salva:
+        duracao = 0
+        if momento_inicio_partida:
+            fim_jogo = datetime.now()
+            duracao = (fim_jogo - momento_inicio_partida).total_seconds()
         
-        match_id = datetime.now().strftime("%Y%m%d_%H%M%S")
+        id_partida = datetime.now().strftime("%Y%m%d_%H%M%S")
         
-        # ATUALIZADO: game.vencedor e game.historico_jogadas
-        match_summary = {
-            "id_partida": match_id,
+        resumo_partida = {
+            "id_partida": id_partida,
             "data_hora": datetime.now().strftime("%d/%m/%Y %H:%M"),
-            "duracao_segundos": round(duration, 2),
-            "jogadores": { "X": player_name.upper(), "O": "IA Ultimate" },
-            "vencedor": game.vencedor if game.vencedor else "Empate",
-            "total_jogadas": len(game.historico_jogadas),
+            "duracao_segundos": round(duracao, 2),
+            "jogadores": { "X": nome_jogador.upper(), "O": "IA Ultimate" },
+            "vencedor": jogo.vencedor if jogo.vencedor else "Empate",
+            "total_jogadas": len(jogo.historico_jogadas),
             "status": "FINALIZADO"
         }
 
-        moves_list = game.historico_jogadas
-        score_update_pending = True
-        game.pontuacao_salva = True # ATUALIZADO
+        lista_movimentos = jogo.historico_jogadas
+        atualizacao_pendente = True
+        jogo.pontuacao_salva = True 
         
+        # Pausa dramática antes de salvar
         pygame.time.delay(500)
-        save_full_match(match_id, match_summary, moves_list)
-        score_update_pending = False
+        salvar_partida_completa(id_partida, resumo_partida, lista_movimentos)
+        atualizacao_pendente = False
 
-    # Desenho
-    if current_state == GameState.MENU: draw_menu(screen, mouse_pos)
-    elif current_state == GameState.JOGO: draw_ultimate_board(screen, game, player_symbol, ai_symbol, mouse_pos)
-    elif current_state == GameState.SCORES: draw_scores(screen, mouse_pos)
-    elif current_state == GameState.INSTRUCOES: draw_instructions(screen, mouse_pos)
-    elif current_state == GameState.NOME: draw_name_input(screen, player_name)
-    elif current_state == GameState.SENHA: draw_pin_input(screen, player_pin, player_name.upper(), is_registering_pin, pin_error_message)
+    # --- RENDERIZAÇÃO (DESENHO NA TELA) ---
+    if estado_atual == EstadoJogo.MENU:
+        desenhar_menu(tela, posicao_mouse)
+    elif estado_atual == EstadoJogo.JOGANDO:
+        desenhar_tabuleiro_ultimate(tela, jogo, simbolo_jogador, simbolo_ia, posicao_mouse)
+    elif estado_atual == EstadoJogo.RANKING:
+        desenhar_placar(tela, posicao_mouse)
+    elif estado_atual == EstadoJogo.INSTRUCOES:
+        desenhar_instrucoes(tela, posicao_mouse)
+    elif estado_atual == EstadoJogo.NOME:
+        desenhar_entrada_nome(tela, nome_jogador)
+    elif estado_atual == EstadoJogo.SENHA:
+        # A lógica visual decide se mostra "Criar Senha" ou "Olá" baseado se o login já existe
+        usuario_ja_existe = realizar_login(nome_jogador, "") 
+        desenhar_entrada_senha(tela, senha_jogador, nome_jogador.upper(), not usuario_ja_existe, mensagem_erro_senha)
     
     pygame.display.flip()
 

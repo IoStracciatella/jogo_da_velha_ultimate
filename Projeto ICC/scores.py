@@ -2,99 +2,107 @@ import json
 import os
 from settings import *
 
-# --- FUNÇÕES BÁSICAS DE ARQUIVO ---
-def load_json(filename):
-    """Carrega um arquivo JSON de forma segura."""
-    if not os.path.exists(filename):
-        return {} if filename != FILE_MATCHES else []
-    
-    try:
-        with open(filename, 'r', encoding='utf-8') as f: # Adicionado encoding utf-8
-            return json.load(f)
-    except Exception as e:
-        print(f"Erro ao ler {filename}: {e}")
-        return {} if filename != FILE_MATCHES else []
+# --- GERENCIAMENTO DE ARQUIVOS ---
+def ler_arquivo(nome_arquivo, valor_padrao):
+    """Lê um JSON e retorna o valor padrão se der erro."""
+    if os.path.exists(nome_arquivo):
+        try:
+            with open(nome_arquivo, 'r', encoding='utf-8') as f:
+                return json.load(f)
+        except:
+            print(f"Ops! Não consegui ler o arquivo {nome_arquivo}.")
+    return valor_padrao
 
-def save_json(filename, data):
-    """Salva dados em um arquivo JSON."""
-    try:
-        with open(filename, 'w', encoding='utf-8') as f: # Adicionado encoding utf-8
-            json.dump(data, f, indent=4, ensure_ascii=False)
-    except Exception as e:
-        print(f"Erro ao salvar {filename}: {e}")
+def salvar_arquivo(nome_arquivo, dados):
+    """Salva os dados em formato JSON."""
+    with open(nome_arquivo, 'w', encoding='utf-8') as f:
+        json.dump(dados, f, indent=4, ensure_ascii=False)
 
-# --- GERENCIAMENTO DE JOGADORES (players.json) ---
-def check_user_exists(name):
-    players = load_json(FILE_PLAYERS)
-    return name.upper() in players
+# --- SISTEMA DE USUÁRIOS ---
+def verificar_usuario(nome):
+    """Verifica apenas se o nome já existe no banco."""
+    jogadores = ler_arquivo(ARQUIVO_JOGADORES, {})
+    return nome.upper() in jogadores
 
-def verify_pin(name, input_pin):
-    players = load_json(FILE_PLAYERS)
-    if name.upper() in players:
-        return players[name.upper()] == input_pin
+def realizar_login(nome, senha):
+    """Verifica se nome e senha batem."""
+    jogadores = ler_arquivo(ARQUIVO_JOGADORES, {})
+    nome = nome.upper()
+    if nome in jogadores and jogadores[nome] == senha:
+        return True
     return False
 
-def register_user(name, pin):
-    players = load_json(FILE_PLAYERS)
-    players[name.upper()] = pin
-    save_json(FILE_PLAYERS, players)
-    print(f"Usuário {name} registrado com sucesso!")
+def registrar_usuario(nome, senha):
+    """Cria um novo usuário."""
+    jogadores = ler_arquivo(ARQUIVO_JOGADORES, {})
+    jogadores[nome.upper()] = senha
+    salvar_arquivo(ARQUIVO_JOGADORES, jogadores)
+    print(f"Usuário {nome} registrado com sucesso!")
+    return True
 
-# --- GERENCIAMENTO DE PARTIDAS ---
-def save_full_match(match_id, match_data, moves_list):
-    # 1. Salvar Resumo em matches.json
-    matches = load_json(FILE_MATCHES)
-    if not isinstance(matches, list): matches = [] # Garante que é lista
-    
-    matches.insert(0, match_data)
-    save_json(FILE_MATCHES, matches)
-    
-    # 2. Salvar Movimentos em moves.json
-    all_moves = load_json(FILE_MOVES)
-    all_moves[match_id] = moves_list
-    save_json(FILE_MOVES, all_moves)
-    
-    print(f"Partida {match_id} salva! Total de partidas: {len(matches)}")
+# --- SALVAMENTO E HISTÓRICO ---
+def salvar_partida_completa(id_partida, resumo_partida, lista_movimentos):
+    # 1. Salva o resumo na lista geral (para o ranking)
+    historico = ler_arquivo(ARQUIVO_PARTIDAS, [])
+    historico.insert(0, resumo_partida) 
+    salvar_arquivo(ARQUIVO_PARTIDAS, historico)
+
+    # 2. Salva os movimentos detalhados (para replay futuro)
+    todos_movimentos = ler_arquivo(ARQUIVO_MOVIMENTOS, {})
+    todos_movimentos[id_partida] = lista_movimentos
+    salvar_arquivo(ARQUIVO_MOVIMENTOS, todos_movimentos)
+    print("Partida salva com sucesso!")
 
 # --- ESTATÍSTICAS E RANKING ---
-def get_general_stats():
-    matches = load_json(FILE_MATCHES)
-    stats = {"total_partidas": 0, "vitorias_player": 0, "vitorias_ai": 0, "empates": 0}
+def obter_estatisticas_gerais():
+    """Retorna contagem total de jogos, vitórias e empates."""
+    partidas = ler_arquivo(ARQUIVO_PARTIDAS, [])
+    stats = {
+        "total_partidas": len(partidas),
+        "vitorias_jogador": 0,
+        "vitorias_ia": 0,
+        "empates": 0
+    }
     
-    if not isinstance(matches, list): return stats
-
-    stats["total_partidas"] = len(matches)
-    
-    for m in matches:
-        vencedor = m.get("vencedor", "")
+    for p in partidas:
+        vencedor = p.get("vencedor", "Empate")
         if vencedor == "X":
-            stats["vitorias_player"] += 1
+            stats["vitorias_jogador"] += 1
         elif vencedor == "O":
-            stats["vitorias_ai"] += 1
+            stats["vitorias_ia"] += 1
         else:
-            stats["empates"] += 1     
+            stats["empates"] += 1
+            
     return stats
 
-def get_ranking():
-    matches = load_json(FILE_MATCHES)
-    if not isinstance(matches, list): return []
+def gerar_ranking():
+    """Gera a lista dos melhores jogadores."""
+    partidas = ler_arquivo(ARQUIVO_PARTIDAS, [])
+    placar = {} 
 
-    ranking = {}
-    
-    for m in matches:
-        # Só conta se o humano (X) ganhou
-        if m.get("vencedor") == "X":
-            nome = "Desconhecido"
+    for p in partidas:
+        nome = p.get("jogadores", {}).get("X", "Desconhecido").upper()
+        vencedor = p.get("vencedor")
+
+        if nome not in placar:
+            placar[nome] = {"vitorias": 0, "total": 0}
+        
+        placar[nome]["total"] += 1
+        
+        if vencedor == "X": 
+            placar[nome]["vitorias"] += 1
+
+    lista_final = []
+    for nome, dados in placar.items():
+        taxa_vitoria = 0
+        if dados["total"] > 0:
+            taxa_vitoria = (dados["vitorias"] / dados["total"]) * 100
             
-            # Tenta pegar o nome de várias formas (compatibilidade)
-            if "jogadores" in m and isinstance(m["jogadores"], dict):
-                nome = m["jogadores"].get("X", "Desconhecido")
-            elif "jogador_nome" in m: # Formato antigo
-                nome = m["jogador_nome"]
-            
-            nome = nome.upper().strip()
-            ranking[nome] = ranking.get(nome, 0) + 1
-            
-    # Retorna lista de tuplas: [('NOME', QTD), ('NOME2', QTD)]
-    lista_ordenada = sorted(ranking.items(), key=lambda x: x[1], reverse=True)
-    return lista_ordenada
+        lista_final.append({
+            "nome": nome,
+            "vitorias": dados["vitorias"],
+            "total": dados["total"],
+            "taxa": round(taxa_vitoria, 1)
+        })
+
+    return sorted(lista_final, key=lambda x: x["vitorias"], reverse=True)
