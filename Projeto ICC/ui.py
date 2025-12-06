@@ -3,6 +3,12 @@ from settings import *
 from scores import ler_arquivo, gerar_ranking, realizar_login, verificar_usuario, obter_estatisticas_gerais
 
 # --- FERRAMENTAS AUXILIARES DE DESENHO ---
+# --- VARIÁVEIS DE ANIMAÇÃO ---
+# --- VARIÁVEIS DE ANIMAÇÃO ---
+tamanho_titulo = 48
+direcao_titulo = 1
+ultimo_update = 0
+intervalo = 10  # tempo em ms para atualizar (quanto maior, mais lento)
 
 def desenhar_texto_centralizado(tela, texto, fonte, cor, centro_x, centro_y):
     """Escreve texto centralizado na posição X, Y."""
@@ -27,21 +33,36 @@ def desenhar_botao(tela, texto, x, y, largura, altura, posicao_mouse):
 
 def desenhar_menu(tela, posicao_mouse):
     """Tela Principal (Menu)."""
-    tela.fill(COR_FUNDO)
+ 
+    global tamanho_titulo, direcao_titulo, ultimo_update
     
-    # Título com efeito de sombra
-    desenhar_texto_centralizado(tela, TITULO_JANELA, fonte_titulo, (0,0,0), LARGURA_TELA//2 + 3, 80 + 3)
-    desenhar_texto_centralizado(tela, TITULO_JANELA, fonte_titulo, COR_TEXTO, LARGURA_TELA//2, 80)
+    tela.fill(COR_FUNDO)
 
+    # Atualiza tamanho da fonte (efeito pulso lento)
+    agora = pygame.time.get_ticks()
+    if agora - ultimo_update > intervalo:
+        tamanho_titulo += direcao_titulo * 0.2  # passo menor = mais suave
+        if tamanho_titulo > 54 or tamanho_titulo < 48:
+            direcao_titulo *= -1
+        ultimo_update = agora
+
+    fonte_animada = pygame.font.Font("PixelifySans-VariableFont_wght.ttf", int(tamanho_titulo))
+
+    # Cor alternada suave (muda a cada 500ms)
+    cor_animada = (255, 0, 0) if agora // 500 % 2 == 0 else COR_TEXTO
+
+    # Título com sombra + animação
+    desenhar_texto_centralizado(tela, TITULO_JANELA, fonte_animada, (0,0,0), LARGURA_TELA//2 + 3, 80 + 3)
+    desenhar_texto_centralizado(tela, TITULO_JANELA, fonte_animada,COR_TEXTO, LARGURA_TELA//2, 80)
+
+    # Botões do menu
     lista_botoes = ["Jogar", "Instruções", "Scores", "Sair"]
     inicio_y = 180
     espacamento = 70
 
     botoes_rects = {}
     for i, texto in enumerate(lista_botoes):
-        # Centraliza os botões
         rect = desenhar_botao(tela, texto, LARGURA_TELA//2 - 100, inicio_y + (i * espacamento), 200, 50, posicao_mouse)
-        # Salva com a chave em maiúsculo para o main.py usar (ex: 'JOGAR', 'SCORES')
         botoes_rects[texto.upper()] = rect
 
     return botoes_rects
