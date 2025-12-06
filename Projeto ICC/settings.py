@@ -28,13 +28,20 @@ COR_VITORIA_X = (255, 80, 80, 80)  # Vermelho transparente (fundo de vitória lo
 COR_VITORIA_O = (0, 200, 255, 80)  # Azul transparente
 
 # --- FONTES ---
-# Usamos nomes descritivos para facilitar o uso na UI
-fonte_titulo = pygame.font.SysFont('Verdana', 48, bold=True)
-fonte_media = pygame.font.SysFont('Verdana', 30)
-fonte_pequena = pygame.font.SysFont('Verdana', 20)
-fonte_minuscula = pygame.font.SysFont('Verdana', 14)
-fonte_simbolo = pygame.font.SysFont('Arial', 40, bold=True) # Para desenhar X e O
-fonte_vencedor = pygame.font.SysFont('Arial', 80, bold=True) # Para o X/O gigante
+
+# Caminho ABSOLUTO seguro baseado na pasta do arquivo .py
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+CAMINHO_FONTE = os.path.join(BASE_DIR, "PixelifySans-VariableFont_wght.ttf")
+
+# Carregando fontes Pixelify
+fonte_titulo = pygame.font.Font(CAMINHO_FONTE, 48)
+fonte_media = pygame.font.Font(CAMINHO_FONTE, 30)
+fonte_pequena = pygame.font.Font(CAMINHO_FONTE, 20)
+fonte_minuscula = pygame.font.Font(CAMINHO_FONTE, 14)
+
+# Fonte dos símbolos X e O (também pixel)
+fonte_simbolo = pygame.font.Font(CAMINHO_FONTE, 40)
+fonte_vencedor = pygame.font.Font(CAMINHO_FONTE, 80)
 
 # --- ARQUIVOS DE DADOS ---
 ARQUIVO_JOGADORES = "jogadores.json"
