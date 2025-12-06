@@ -8,7 +8,7 @@ from scores import ler_arquivo, gerar_ranking, realizar_login, verificar_usuario
 tamanho_titulo = 48
 direcao_titulo = 1
 ultimo_update = 0
-intervalo = 10  # tempo em ms para atualizar (quanto maior, mais lento)
+intervalo = 5  # tempo em ms para atualizar (quanto maior, mais lento)
 
 def desenhar_texto_centralizado(tela, texto, fonte, cor, centro_x, centro_y):
     """Escreve texto centralizado na posição X, Y."""
@@ -46,7 +46,7 @@ def desenhar_menu(tela, posicao_mouse):
             direcao_titulo *= -1
         ultimo_update = agora
 
-    fonte_animada = pygame.font.Font("PixelifySans-VariableFont_wght.ttf", int(tamanho_titulo))
+    fonte_animada=pygame.font.Font(CAMINHO_FONTE, int(tamanho_titulo))
 
     # Cor alternada suave (muda a cada 500ms)
     cor_animada = (255, 0, 0) if agora // 500 % 2 == 0 else COR_TEXTO
