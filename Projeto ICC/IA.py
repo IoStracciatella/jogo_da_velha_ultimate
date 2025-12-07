@@ -1,5 +1,4 @@
 import random
-# Não precisamos importar o jogo inteiro, só receberemos o objeto dele
 
 class InteligenciaArtificial:
     def __init__(self, simbolo_ia):

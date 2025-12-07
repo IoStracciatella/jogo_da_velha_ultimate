@@ -1,5 +1,170 @@
 [
     {
+        "id_partida": "20251206_201125",
+        "data_hora": "06/12/2025 20:11",
+        "duracao_segundos": 191.33,
+        "jogadores": {
+            "X": "MARE",
+            "O": "IA"
+        },
+        "vencedor": "X",
+        "total_jogadas": 29,
+        "status": "FINALIZADO"
+    },
+    {
+        "id_partida": "20251206_183908",
+        "data_hora": "06/12/2025 18:39",
+        "duracao_segundos": 51.15,
+        "jogadores": {
+            "X": "MARE",
+            "O": "IA"
+        },
+        "vencedor": "X",
+        "total_jogadas": 41,
+        "status": "FINALIZADO"
+    },
+    {
+        "id_partida": "20251206_183704",
+        "data_hora": "06/12/2025 18:37",
+        "duracao_segundos": 36.84,
+        "jogadores": {
+            "X": "MARE",
+            "O": "IA"
+        },
+        "vencedor": "O",
+        "total_jogadas": 34,
+        "status": "FINALIZADO"
+    },
+    {
+        "id_partida": "20251206_183500",
+        "data_hora": "06/12/2025 18:35",
+        "duracao_segundos": 39.5,
+        "jogadores": {
+            "X": "MARE",
+            "O": "IA"
+        },
+        "vencedor": "O",
+        "total_jogadas": 38,
+        "status": "FINALIZADO"
+    },
+    {
+        "id_partida": "20251206_183323",
+        "data_hora": "06/12/2025 18:33",
+        "duracao_segundos": 33.89,
+        "jogadores": {
+            "X": "MARE",
+            "O": "IA"
+        },
+        "vencedor": "O",
+        "total_jogadas": 36,
+        "status": "FINALIZADO"
+    },
+    {
+        "id_partida": "20251206_182807",
+        "data_hora": "06/12/2025 18:28",
+        "duracao_segundos": 46.43,
+        "jogadores": {
+            "X": "MARE",
+            "O": "IA"
+        },
+        "vencedor": "O",
+        "total_jogadas": 44,
+        "status": "FINALIZADO"
+    },
+    {
+        "id_partida": "20251206_182502",
+        "data_hora": "06/12/2025 18:25",
+        "duracao_segundos": 23.48,
+        "jogadores": {
+            "X": "MARE",
+            "O": "IA"
+        },
+        "vencedor": "X",
+        "total_jogadas": 31,
+        "status": "FINALIZADO"
+    },
+    {
+        "id_partida": "20251206_182351",
+        "data_hora": "06/12/2025 18:23",
+        "duracao_segundos": 36.87,
+        "jogadores": {
+            "X": "MARE",
+            "O": "IA"
+        },
+        "vencedor": "O",
+        "total_jogadas": 34,
+        "status": "FINALIZADO"
+    },
+    {
+        "id_partida": "20251206_180421",
+        "data_hora": "06/12/2025 18:04",
+        "duracao_segundos": 86.2,
+        "jogadores": {
+            "X": "MARE",
+            "O": "IA"
+        },
+        "vencedor": "Empate",
+        "total_jogadas": 59,
+        "status": "FINALIZADO"
+    },
+    {
+        "id_partida": "20251206_134456",
+        "data_hora": "06/12/2025 13:44",
+        "duracao_segundos": 34.15,
+        "jogadores": {
+            "X": "MARE",
+            "O": "IA"
+        },
+        "vencedor": "X",
+        "total_jogadas": 43,
+        "status": "FINALIZADO"
+    },
+    {
+        "id_partida": "20251206_134312",
+        "data_hora": "06/12/2025 13:43",
+        "duracao_segundos": 53.13,
+        "jogadores": {
+            "X": "MARE",
+            "O": "IA"
+        },
+        "vencedor": "O",
+        "total_jogadas": 38,
+        "status": "FINALIZADO"
+    },
+    {
+        "id_partida": "20251206_133813",
+        "data_hora": "06/12/2025 13:38",
+        "duracao_segundos": 122.08,
+        "jogadores": {
+            "X": "MARE",
+            "O": "IA"
+        },
+        "vencedor": "X",
+        "total_jogadas": 51,
+        "status": "FINALIZADO"
+    },
+    {
+        "id_partida": "20251206_125709",
+        "data_hora": "06/12/2025 12:57",
+        "duracao_segundos": 91.41,
+        "jogadores": {
+            "X": "MARE",
+            "O": "IA"
+        },
+        "vencedor": "X",
+        "total_jogadas": 37,
+        "status": "FINALIZADO"
+    },
+    {
+        "id_partida": "202512052102",
+        "jogadores": {
+            "X": "mare",
+            "O": "IA"
+        },
+        "vencedor": "X",
+        "status": "FIM"
+    },
+    {
         "id_partida": "20251205_191412",
         "data_hora": "05/12/2025 19:14",
         "duracao_segundos": 54.16,
